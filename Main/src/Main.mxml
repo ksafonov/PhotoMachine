@@ -55,7 +55,7 @@
         private const DEBUG:Boolean = true;
 
         private function creationComplete():void {
-            _flarManager = new FLARManager("flar/flarConfig.xml", new FaceAndMarkerDetector(), stage);
+            _flarManager = new FLARManager("flarConfig.xml", new FaceAndMarkerDetector(), stage);
             _flarManager.addEventListener(ErrorEvent.ERROR, onFlarManagerError);
             _flarManager.addEventListener(FLARMarkerEvent.MARKER_ADDED, onMarkerAdded);
             _flarManager.addEventListener(FLARMarkerEvent.MARKER_UPDATED, onMarkerUpdated);
