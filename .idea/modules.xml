@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/FLARManager/FLARManager.iml" filepath="$PROJECT_DIR$/FLARManager/FLARManager.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Main/Main.iml" filepath="$PROJECT_DIR$/Main/Main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Marilena/Marilena.iml" filepath="$PROJECT_DIR$/Marilena/Marilena.iml" />
+    </modules>
+  </component>
+</project>
+
