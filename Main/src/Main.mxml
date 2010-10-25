@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark"
                        creationComplete="creationComplete()">
-
     <fx:Script><![CDATA[
         import at.imagination.flare.Stats;
 
@@ -12,15 +11,10 @@
 
         import org.jetbrains.FaceAndMarkerDetector;
 
+        private static const DEBUG:Boolean = true;
+
         private var _flarManager:FLARManager;
-
-        public static const FACE_COEFF_X:Number = 1.2;
-        public static const FACE_COEFF_Y:Number = 1.4;
-
         private var _canvas:UIComponent;
-
-        private const DEBUG:Boolean = true;
-
         private var _listeners:Vector.<MarkerListener> = new Vector.<MarkerListener>();
 
         private function creationComplete():void {

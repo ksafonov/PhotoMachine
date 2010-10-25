@@ -8,10 +8,8 @@
 package {
 import com.transmote.flar.marker.FLARMarkerEvent;
 
-import flash.display.DisplayObject;
 import flash.display.Sprite;
 import flash.geom.Point;
-
 import flash.geom.Rectangle;
 
 import mx.core.UIComponent;
@@ -19,8 +17,10 @@ import mx.core.UIComponent;
 import org.jetbrains.FaceAndMarkerDetector;
 
 public class FaceHighlighter implements MarkerListener {
-    private var _targetComponent:UIComponent;
+    private static const FACE_STRETCH_X:Number = 1.2;
+    private static const FACE_STRETCH_Y:Number = 1.4;
 
+    private var _targetComponent:UIComponent;
     private var _cover:Sprite;
     private var _mask:Sprite;
 
@@ -70,10 +70,10 @@ public class FaceHighlighter implements MarkerListener {
 
         var faceWidth:Number = corners[1].x - corners[3].x;
         var faceHeight:Number = corners[1].y - corners[3].y;
-        var x:Number = corners[3].x - faceWidth * (Main.FACE_COEFF_X - 1) / 2;
-        var y:Number = corners[3].y - faceHeight * (Main.FACE_COEFF_Y - 1) / 2;
-        var width:Number = faceWidth * Main.FACE_COEFF_X;
-        var height:Number = faceHeight * Main.FACE_COEFF_Y;
+        var x:Number = corners[3].x - faceWidth * (FACE_STRETCH_X - 1) / 2;
+        var y:Number = corners[3].y - faceHeight * (FACE_STRETCH_Y - 1) / 2;
+        var width:Number = faceWidth * FACE_STRETCH_X;
+        var height:Number = faceHeight * FACE_STRETCH_Y;
         return new Rectangle(x, y, width, height);
     }
 }
