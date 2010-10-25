@@ -701,6 +701,8 @@ use namespace flarManagerInternal;
 			var removedMarker:FLARMarker;
 			var bRemovedMarkerMatched:Boolean = false;
 			while (i--) {
+                if (!this._activeMarkers) return; // [IntelliJ] may be deactivated during events dispatch
+
 				j = this._activeMarkers.length;
 				detectedMarker = detectedMarkers[i];
 				closestMarker = null;

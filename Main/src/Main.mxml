@@ -8,51 +8,20 @@
         import com.transmote.flar.FLARManager;
         import com.transmote.flar.marker.FLARMarkerEvent;
 
-        import examples.support.MarkerOutliner;
-
-        import mx.core.SoundAsset;
         import mx.core.UIComponent;
-
-        import mx.formatters.DateFormatter;
-        import mx.graphics.ImageSnapshot;
-        import mx.graphics.codec.PNGEncoder;
 
         import org.jetbrains.FaceAndMarkerDetector;
 
         private var _flarManager:FLARManager;
-        private var _markerOutliner:MarkerOutliner;
 
-        private var _triggerDetected:Boolean;
+        public static const FACE_COEFF_X:Number = 1.2;
+        public static const FACE_COEFF_Y:Number = 1.4;
 
-        private var _whiteSheet:Sprite;
-        private var _faceMask:Sprite;
-
-        private var _faceAppearedAt:Date;
-
-        private static const FACE_COEFF_X:Number = 1.2;
-        private static const FACE_COEFF_Y:Number = 1.4;
-        private static const FACE_DECAY:Number = 0.2;
-
-        private static const PHOTO_DELAY:int = 1 * 1000; // ms
-        private static const PHOTO_SHOW_DELAY:Number = 5 * 1000; // ms
-
-        private static const TRIGGER:Boolean = true;
-
-        private var _faceBounds:Rectangle;
         private var _canvas:UIComponent;
 
-        [Embed('/focus.mp3')]
-        private var _focusSound:Class;
-
-        private var _focusSoundAsset:SoundAsset = new _focusSound() as SoundAsset;
-
-        [Embed('/shutter.mp3')]
-        private var _shutterSound:Class;
-
-        private var _shutterSoundAsset:SoundAsset = new _shutterSound() as SoundAsset;
-
-        private var _deactivation:Boolean;
         private const DEBUG:Boolean = true;
+
+        private var _listeners:Vector.<MarkerListener> = new Vector.<MarkerListener>();
 
         private function creationComplete():void {
             _flarManager = new FLARManager("flarConfig.xml", new FaceAndMarkerDetector(), stage);
@@ -61,24 +30,15 @@
             _flarManager.addEventListener(FLARMarkerEvent.MARKER_UPDATED, onMarkerUpdated);
             _flarManager.addEventListener(FLARMarkerEvent.MARKER_REMOVED, onMarkerRemoved);
 
-
-            _markerOutliner = new MarkerOutliner();
-            _markerOutliner.mouseChildren = false;
-
             _canvas = new UIComponent();
             addElement(_canvas);
             var flarSource:Sprite = Sprite(_flarManager.flarSource);
             _canvas.addChild(flarSource);
 
-            _whiteSheet = new Sprite();
-            _whiteSheet.graphics.beginFill(0xFFFFFF, 0.5);
-            _whiteSheet.graphics.drawRect(0, 0, 1000, 1000); // TODO
-            _faceMask = new Sprite();
-            _whiteSheet.mask = _faceMask;
-
-            _canvas.addChild(_whiteSheet);
+            _listeners.push(new PhotoMaker(_flarManager, _canvas));
+            _listeners.push(new FaceHighlighter(_canvas));
             if (DEBUG) {
-                _canvas.addChild(_markerOutliner);
+                _listeners.push(new DebugMarkerListener(_canvas));
                 _canvas.addChild(new Stats(250));
             }
         }
@@ -91,228 +51,22 @@
             trace(evt.text);
         }
 
-        private function onMarkerAdded(evt:FLARMarkerEvent):void {
-            _markerOutliner.drawOutlines(evt.marker, 8, getColorByPatternId(evt.marker.patternId));
-            if (evt.marker.patternId == FaceAndMarkerDetector.FACE_MARKER_ID) {
-                faceMarkerUpdatedOrMoved(evt);
-            } else {
-                _triggerDetected = true;
-            }
-            checkPhoto();
-        }
-
-        private function onMarkerUpdated(evt:FLARMarkerEvent):void {
-            if (evt.marker.patternId == FaceAndMarkerDetector.FACE_MARKER_ID) {
-                faceMarkerUpdatedOrMoved(evt);
-            }
-
-            checkPhoto();
-            if (evt.marker.corners != null) {
-                _markerOutliner.drawOutlines(evt.marker, 1, getColorByPatternId(evt.marker.patternId));
+        public function onMarkerAdded(evt:FLARMarkerEvent):void {
+            for each (var markerListener:MarkerListener in _listeners) {
+                markerListener.onMarkerAdded(evt);
             }
         }
 
-        private function onMarkerRemoved(evt:FLARMarkerEvent):void {
-            if (_deactivation) {
-                return;
-            }
-
-            if (evt.marker.patternId == FaceAndMarkerDetector.FACE_MARKER_ID) {
-                setMask(null);
-                _faceAppearedAt = null;
-            } else {
-                _triggerDetected = false;
-            }
-            _markerOutliner.drawOutlines(evt.marker, 4, getColorByPatternId(evt.marker.patternId));
-        }
-
-        private function checkPhoto():void {
-            if (_faceAppearedAt == null || (TRIGGER && !_triggerDetected)) {
-                return;
-            }
-            if (new Date().getTime() - _faceAppearedAt.getTime() < PHOTO_DELAY) {
-                return;
-            }
-
-            _deactivation = true;
-            _flarManager.deactivate();
-            _deactivation = false;
-            _shutterSoundAsset.play(0);
-            loadPhotoBackground();
-            _faceAppearedAt = null;
-            _triggerDetected = false;
-        }
-
-        private function loadPhotoBackground():void {
-            var _loader:Loader = new Loader();
-            _loader.contentLoaderInfo.addEventListener(Event.COMPLETE, makePhoto);
-            _loader.load(new URLRequest("flex_team.jpg"));
-        }
-
-        private function makePhoto(event:Event):void {
-            var photo:Bitmap = event.currentTarget.content;
-
-            var currentImage:Sprite = Sprite(_flarManager.flarSource);
-            saveImage(currentImage, "original");
-
-            var tmpImage:Bitmap = new Bitmap();
-            tmpImage.bitmapData = new BitmapData(currentImage.width, currentImage.height);
-            tmpImage.bitmapData.draw(currentImage);
-
-            var holder:Sprite = new Sprite();
-            holder.addChild(tmpImage);
-
-            var mask:Shape = new Shape();
-            var mat:Matrix = new Matrix();
-            var colors:Array = [0xFFFFFF,0xFFFFFF];
-            var alphas:Array = [1,0];
-            var ratios:Array = [255 * (1 - FACE_DECAY),255];
-            mat.createGradientBox(_faceBounds.width, _faceBounds.height, 0, 0);
-            mat.translate(_faceBounds.x, _faceBounds.y);
-            mask.graphics.beginGradientFill(GradientType.RADIAL, colors, alphas, ratios, mat);
-            mask.graphics.drawRect(0, 0, currentImage.width, currentImage.height);
-            mask.graphics.endFill();
-
-            mask.cacheAsBitmap = true;
-            holder.cacheAsBitmap = true;
-            holder.addChild(mask);
-            holder.mask = mask;
-
-            var m:Matrix = new Matrix();
-//            var backgroundRect:Rectangle = new Rectangle(238, 42, 75, 100);
-            var backgroundRect:Rectangle = new Rectangle(225, 12, 104, 128);
-
-            var scaleX:Number = backgroundRect.width / _faceBounds.width;
-            var scaleY:Number = backgroundRect.height / _faceBounds.height;
-            m.scale(scaleX, scaleY);
-            m.translate(backgroundRect.x - _faceBounds.x * scaleX, backgroundRect.y - _faceBounds.y * scaleY);
-            photo.bitmapData.draw(holder, m);
-
-            var imageFile:File = saveImage(photo, "inspired");
-            uploadFile(imageFile);
-
-            Sprite(_flarManager.flarSource).visible = false;
-            _canvas.addChild(photo);
-
-            setTimeout(function():void {
-                _canvas.removeChild(photo);
-                Sprite(_flarManager.flarSource).visible = true;
-                _flarManager.activate();
-            }, PHOTO_SHOW_DELAY);
-        }
-
-        private static function saveImage(content:IBitmapDrawable, type:String):File {
-            var originalSnapshot:ImageSnapshot = ImageSnapshot.captureImage(content, 0, new PNGEncoder());
-            var dateFormatter:DateFormatter = new DateFormatter();
-            dateFormatter.formatString = "MMM DD H-NN-SS";
-            var fileName:String = dateFormatter.format(new Date()) + "(" + type + ").png";
-            var fileStream:FileStream = new FileStream();
-            var file:File = new File("c:\\PhotoSet\\" + fileName);
-            fileStream.open(file, FileMode.WRITE);
-            fileStream.writeBytes(originalSnapshot.data, 0);
-            fileStream.close();
-            return file;
-        }
-
-        private function uploadFile(file:File):void {
-            var urlVars:URLVariables = new URLVariables();
-            urlVars.username = "";
-            urlVars.password = "";
-
-            var urlRequest:URLRequest = new URLRequest("http://twitpic.com/api/upload");
-            urlRequest.method = URLRequestMethod.POST;
-            urlRequest.data = urlVars;
-            file.addEventListener(Event.COMPLETE, file_completeHandler);
-            file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, file_uploadCompleteDataHandler);
-            file.addEventListener(HTTPStatusEvent.HTTP_STATUS, file_httpStatusHandler);
-            file.addEventListener(HTTPStatusEvent.HTTP_RESPONSE_STATUS, file_httpResponseStatusHandler);
-            file.addEventListener(IOErrorEvent.IO_ERROR, file_ioErrorHandler);
-            file.upload(urlRequest, 'media');
-        }
-
-        private function setMask(corners:Vector.<Point>):void {
-            _whiteSheet.visible = corners != null;
-            if (corners) {
-                _faceMask.graphics.clear();
-                _faceMask.graphics.beginFill(0xFFFFFF);
-                _faceMask.graphics.drawRect(0, 0, width, height);
-                _faceMask.graphics.beginFill(0);
-
-                var faceWidth:Number = corners[1].x - corners[3].x;
-                var faceHeight:Number = corners[1].y - corners[3].y;
-                var x:Number = corners[3].x - faceWidth * (FACE_COEFF_X - 1) / 2;
-                var y:Number = corners[3].y - faceHeight * (FACE_COEFF_Y - 1) / 2;
-
-                var w:Number = faceWidth * FACE_COEFF_X;
-                var h:Number = faceHeight * FACE_COEFF_Y;
-
-                _faceBounds = new Rectangle(x + w, y, -w, h);
-                _faceMask.graphics.drawEllipse(x, y, w, h);
-            } else {
-                _faceBounds = null;
+        public function onMarkerUpdated(evt:FLARMarkerEvent):void {
+            for each (var markerListener:MarkerListener in _listeners) {
+                markerListener.onMarkerUpdated(evt);
             }
         }
 
-
-        private static function getColorByPatternId(patternId:int):Number {
-            switch (patternId % 12) {
-                case 0:
-                    return 0xFF1919;
-                case 1:
-                    return 0xFF19E8;
-                case 2:
-                    return 0x9E19FF;
-                case 3:
-                    return 0x192EFF;
-                case 4:
-                    return 0x1996FF;
-                case 5:
-                    return 0x19FDFF;
-                case 6:
-                    return 0x19FF5A;
-                case 7:
-                    return 0x19FFAA;
-                case 8:
-                    return 0x6CFF19;
-                case 9:
-                    return 0xF9FF19;
-                case 10:
-                    return 0xFFCE19;
-                case 11:
-                    return 0xFF9A19;
-                case 12:
-                    return 0xFF6119;
-                default:
-                    return 0xCCCCCC;
+        public function onMarkerRemoved(evt:FLARMarkerEvent):void {
+            for each (var markerListener:MarkerListener in _listeners) {
+                markerListener.onMarkerRemoved(evt);
             }
-        }
-
-        private function faceMarkerUpdatedOrMoved(evt:FLARMarkerEvent):void {
-            setMask(evt.marker.corners);
-            if (!_faceAppearedAt) {
-                _faceAppearedAt = new Date();
-                _focusSoundAsset.play(0);
-            }
-        }
-
-        private function file_completeHandler(event:Event):void {
-            var v = 0;
-        }
-
-        private function file_uploadCompleteDataHandler(event:DataEvent):void {
-            var v = 0;
-        }
-
-        private function file_httpStatusHandler(event:HTTPStatusEvent):void {
-            var v = 0;
-        }
-
-        private function file_httpResponseStatusHandler(event:HTTPStatusEvent):void {
-            var v = 0;
-        }
-
-        private function file_ioErrorHandler(event:IOErrorEvent):void {
-            var v = 0;
         }
         ]]></fx:Script>
 </s:WindowedApplication>
