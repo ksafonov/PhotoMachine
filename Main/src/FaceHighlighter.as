@@ -61,7 +61,7 @@ public class FaceHighlighter implements MarkerListener {
             _mask.graphics.drawRect(0, 0, _targetComponent.stage.stageWidth, _targetComponent.stage.stageHeight);
             _mask.graphics.beginFill(0);
             var faceRect:Rectangle = getFaceRect(corners);
-            _mask.graphics.drawEllipse(faceRect.x, faceRect.y, faceRect.width, faceRect.height);
+            _mask.graphics.drawEllipse(faceRect.x * _targetComponent.scaleX, faceRect.y * _targetComponent.scaleY, faceRect.width * _targetComponent.scaleX, faceRect.height * _targetComponent.scaleX);
         }
     }
 

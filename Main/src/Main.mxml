@@ -26,6 +26,8 @@
 
             _canvas = new UIComponent();
             addElement(_canvas);
+            _canvas.scaleX = 2.2;
+            _canvas.scaleY = 2.2;
             var flarSource:Sprite = Sprite(_flarManager.flarSource);
             _canvas.addChild(flarSource);
 
