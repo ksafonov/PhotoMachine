@@ -16,10 +16,7 @@ import flash.display.IBitmapDrawable;
 import flash.display.Loader;
 import flash.display.Shape;
 import flash.display.Sprite;
-import flash.events.DataEvent;
 import flash.events.Event;
-import flash.events.HTTPStatusEvent;
-import flash.events.IOErrorEvent;
 import flash.filesystem.File;
 import flash.filesystem.FileMode;
 import flash.filesystem.FileStream;
@@ -64,26 +61,26 @@ public class PhotoMaker implements MarkerListener {
     private var _flarManager:FLARManager;
     private var _targetComponent:UIComponent;
 
-    public function PhotoMaker(flarManager:FLARManager, targetComponent: UIComponent) {
+    public function PhotoMaker(flarManager:FLARManager, targetComponent:UIComponent) {
         _flarManager = flarManager;
         _targetComponent = targetComponent;
     }
 
     public function onMarkerAdded(evt:FLARMarkerEvent):void {
         if (evt.marker.patternId == FaceAndMarkerDetector.FACE_MARKER_ID) {
-                faceMarkerUpdatedOrMoved(evt);
-            } else {
-                _triggerDetected = true;
-            }
-            checkPhoto();
+            faceMarkerUpdatedOrMoved(evt);
+        } else {
+            _triggerDetected = true;
+        }
+        checkPhoto();
     }
 
     public function onMarkerUpdated(evt:FLARMarkerEvent):void {
         if (evt.marker.patternId == FaceAndMarkerDetector.FACE_MARKER_ID) {
-             faceMarkerUpdatedOrMoved(evt);
-         }
+            faceMarkerUpdatedOrMoved(evt);
+        }
 
-         checkPhoto();
+        checkPhoto();
 
     }
 
@@ -206,32 +203,7 @@ public class PhotoMaker implements MarkerListener {
         var urlRequest:URLRequest = new URLRequest("http://twitpic.com/api/upload");
         urlRequest.method = URLRequestMethod.POST;
         urlRequest.data = urlVars;
-        file.addEventListener(Event.COMPLETE, file_completeHandler);
-        file.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, file_uploadCompleteDataHandler);
-        file.addEventListener(HTTPStatusEvent.HTTP_STATUS, file_httpStatusHandler);
-        file.addEventListener(HTTPStatusEvent.HTTP_RESPONSE_STATUS, file_httpResponseStatusHandler);
-        file.addEventListener(IOErrorEvent.IO_ERROR, file_ioErrorHandler);
         file.upload(urlRequest, 'media');
-    }
-
-    private function file_completeHandler(event:Event):void {
-        var v = 0;
-    }
-
-    private function file_uploadCompleteDataHandler(event:DataEvent):void {
-        var v = 0;
-    }
-
-    private function file_httpStatusHandler(event:HTTPStatusEvent):void {
-        var v = 0;
-    }
-
-    private function file_httpResponseStatusHandler(event:HTTPStatusEvent):void {
-        var v = 0;
-    }
-
-    private function file_ioErrorHandler(event:IOErrorEvent):void {
-        var v = 0;
     }
 
 }
